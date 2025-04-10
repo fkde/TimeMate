@@ -13,48 +13,60 @@ class TimeMateView(ctk.CTk):
     def __init__(self, controller):
         super().__init__()
         self.controller = controller
-        self.title("TimeMate – Arbeitszeiterfassung")
+        self.title("TimeMate - Arbeitszeiterfassung")
+        self.resizable(False, False)
 
         if platform.system() == "Windows":
             self.iconbitmap(resource_path("icons/timemate-green.ico"))
         else:
             self.iconphoto(False, tk.PhotoImage(file=resource_path("icons/timemate-green.png")))
 
-        self.geometry("600x180")
+        self.geometry("580x220")
         ctk.set_appearance_mode("System")
         ctk.set_default_color_theme("blue")
 
         self.running = False
         self.last_visible_buttons = set()
+        self.status_clear_timer = None
 
-        self.grid_rowconfigure(1, weight=1)
-
-        #Menu Bar
-        self.menu_frame = ctk.CTkFrame(self, bg_color="#000000")
-        self.menu_frame.grid(row=0, column=0, sticky="e", padx=10, pady=(10, 0))
+        # Menu Bar
+        self.menu_frame = ctk.CTkFrame(self, fg_color="#202020", corner_radius=0)
+        self.menu_frame.grid(row=0, column=0, sticky="new", padx=0, pady=0)
 
         self.menu_log_button = ctk.CTkButton(
             self.menu_frame,
             text="📄 Zeiterfassungen",
             command=self.controller.open_log_window,
-            fg_color="gray",
-            corner_radius=3,
-            height=20
+            fg_color="#202020",
+            hover_color="#404040",
+            corner_radius=0,
+            height=30
         )
         self.menu_log_button.grid(row=0, column=0, sticky="w")
 
-        # Content frame
-        self.content_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.content_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
+        self.menu_settings_button = ctk.CTkButton(
+            self.menu_frame,
+            text="⚙ Einstellungen",
+            command=self.controller.open_settings_window,
+            fg_color="#202020",
+            hover_color="#404040",
+            corner_radius=0,
+            height=30
+        )
+        self.menu_settings_button.grid(row=0, column=2, sticky="e")
 
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=1)
+        # Content frame with fixed height
+        self.content_frame = ctk.CTkFrame(self, fg_color="transparent", height=200)
+        self.content_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
 
-        self.content_frame.grid_columnconfigure(0, weight=1)
+        # Configure row/column to ensure stability
+        self.content_frame.grid_rowconfigure(0, weight=1)  # The Frame for the buttons has weight and takes up available space.
+        self.content_frame.grid_columnconfigure(0, weight=1)  # The Frame for the buttons has weight and takes up available space.
         self.content_frame.grid_columnconfigure(1, weight=2)
         self.content_frame.grid_columnconfigure(2, weight=1)
-        self.content_frame.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=1)
 
+        # Display frame (Timer and Status)
         self.display_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
         self.display_frame.grid(row=0, column=0, sticky="ew")
 
@@ -64,6 +76,7 @@ class TimeMateView(ctk.CTk):
         self.status_label = ctk.CTkLabel(self.display_frame, text="", font=("Helvetica", 11))
         self.status_label.pack(anchor="w", pady=0)
 
+        # Input fields for title and description
         shared_style = {
             "fg_color": "#2b2b2b",
             "border_color": "#3a3a3a",
@@ -90,11 +103,13 @@ class TimeMateView(ctk.CTk):
         self.description.bind("<FocusIn>", self._clear_placeholder)
         self.description.bind("<FocusOut>", self._restore_placeholder)
 
+        # Button frame with consistent size
         self.button_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
         self.button_frame.grid(row=0, column=2, sticky="e", padx=10)
 
-        self.start_button = ctk.CTkButton(self.button_frame, text="Start", command=self.controller.start_timer, fg_color="#3B82F6", hover_color="#2563EB", corner_radius=2)
-        self.stop_button = ctk.CTkButton(self.button_frame, text="Stopp", command=self.controller.pause_timer, fg_color="#F59E0B", hover_color="#D97706", corner_radius=2)
+        # Buttons
+        self.start_button = ctk.CTkButton(self.button_frame, text="Start", command=self.controller.start_timer, fg_color="#3B82F6", hover_color="#2563EB", corner_radius=2, height=102)
+        self.stop_button = ctk.CTkButton(self.button_frame, text="Stopp", command=self.controller.pause_timer, fg_color="#F59E0B", hover_color="#D97706", corner_radius=2, height=102)
         self.reset_button = ctk.CTkButton(self.button_frame, text="Abbrechen", command=self.controller.reset_timer, fg_color="#6B7280", hover_color="#4B5563", corner_radius=2)
         self.book_button = ctk.CTkButton(self.button_frame, text="Buchen", command=self.controller.book_time, fg_color="#10B981", hover_color="#059669", corner_radius=2)
 
@@ -120,29 +135,30 @@ class TimeMateView(ctk.CTk):
             desired_buttons.add("stop")
         elif state["paused"]:
             desired_buttons.update(["start", "book", "reset"])
-            self.start_button.configure(text="Fortsetzen")
+            self.start_button.configure(text="Fortsetzen", height=28)
+
         else:
             desired_buttons.add("start")
-            self.start_button.configure(text="Start")
+            self.start_button.configure(text="Start", height=102)
 
         if desired_buttons == self.last_visible_buttons:
             return
 
         self.last_visible_buttons = desired_buttons
 
-        self.start_button.pack_forget()
-        self.stop_button.pack_forget()
-        self.book_button.pack_forget()
-        self.reset_button.pack_forget()
+        self.start_button.grid_remove()
+        self.stop_button.grid_remove()
+        self.book_button.grid_remove()
+        self.reset_button.grid_remove()
 
         if "reset" in desired_buttons:
-            self.reset_button.pack(pady=5)
+            self.reset_button.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
         if "start" in desired_buttons:
-            self.start_button.pack(pady=5)
+            self.start_button.grid(row=0, column=0, sticky="ew", padx=10, pady=5)
         if "book" in desired_buttons:
-            self.book_button.pack(pady=5)
+            self.book_button.grid(row=3, column=0, sticky="ew", padx=10, pady=5)
         if "stop" in desired_buttons:
-            self.stop_button.pack(pady=5)
+            self.stop_button.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
 
     def update_from_session(self):
         state = {
@@ -168,12 +184,21 @@ class TimeMateView(ctk.CTk):
 
     def show_status(self, message):
         self.status_label.configure(text=message)
+        self.clear_status_after_delay()
 
     def enable_booking(self):
         self.book_button.configure(state="normal")
 
     def disable_booking(self):
         self.book_button.configure(state="disabled")
+
+    def clear_status_after_delay(self):
+
+        if self.status_clear_timer:
+            self.after_cancel(self.status_clear_timer)
+
+        # Entfernt den Text nach 5 Sekunden
+        self.status_clear_timer = self.status_label.after(5000, lambda: self.status_label.configure(text=""))
 
     def _clear_placeholder(self, event=None):
         current = self.description.get("0.0", "end").strip()

@@ -1,15 +1,17 @@
 import threading
 import time
-import customtkinter as ctk
 from model.session_manager import SessionManager
 from view.main_view import TimeMateView
+from view.modal.log_overview import LogOverviewModal
+from view.modal.settings import SettingsModal
+from model.settings_manager import SettingsManager
 from view.tray_adapter import TrayIcon
 from datetime import datetime, timedelta
-
 
 class TimeMateController:
     def __init__(self):
         self.model = SessionManager()
+        self.settings = SettingsManager()
         self.view = TimeMateView(self)
         self.tray = TrayIcon(self)
         self.timer_thread = None
@@ -72,29 +74,19 @@ class TimeMateController:
             return f"{seconds} s"
 
     def open_log_window(self):
-        log_window = ctk.CTkToplevel(self.view)
-        log_window.title("Zeiterfassungen")
-        log_window.geometry("500x400")
+        log_overview = LogOverviewModal(self)
+        log_overview.grab_set()
+        log_overview.wait_window()
 
-        scroll_frame = ctk.CTkScrollableFrame(log_window)
-        scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
+    def open_settings_window(self):
+        settings_modal = SettingsModal(self)
+        settings_modal.deiconify()
+        settings_modal.after(100, settings_modal.grab_set)
+        settings_modal.wait_window()
 
-        def _on_mousewheel(event):
-            scroll_frame._parent_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-
-        scroll_frame._parent_canvas.bind_all("<MouseWheel>", _on_mousewheel)
-
-        # Für Linux (Scrollrad wird anders übermittelt)
-        scroll_frame._parent_canvas.bind_all("<Button-4>", lambda e: scroll_frame._parent_canvas.yview_scroll(-1, "units"))
-        scroll_frame._parent_canvas.bind_all("<Button-5>", lambda e: scroll_frame._parent_canvas.yview_scroll(1, "units"))
-
-        for entry in self.model.entries[::-1]:  # letzte zuerst
-            start = self.format_timestamp(entry['start'])
-            end = self.format_timestamp(entry['end'])
-            duration = self.format_duration(entry['duration'])
-            display = f"{start} → {end}\n{entry['title']} ({duration})\n{entry['description']}"
-            label = ctk.CTkLabel(scroll_frame, text=display, anchor="w", justify="left")
-            label.pack(fill="x", padx=5, pady=5)
+    def save_settings(self, api_url):
+        self.settings.set_setting("api_url", api_url)
+        self.settings.save_settings()
 
     def _run_timer(self):
         while self.timer_running:

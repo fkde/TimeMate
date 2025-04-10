@@ -4,3 +4,4 @@ build/
 dist/
 __pycache__/
 data/sessions.json
+data/settings.json
