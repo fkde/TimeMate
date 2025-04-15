@@ -9,13 +9,14 @@ from view.tray_adapter import TrayIcon
 from datetime import datetime, timedelta
 
 class TimeMateController:
-    def __init__(self):
+    def __init__(self, api_token=None):
         self.model = SessionManager()
         self.settings = SettingsManager()
         self.view = TimeMateView(self)
         self.tray = TrayIcon(self)
         self.timer_thread = None
         self.timer_running = False
+        self.api_token = api_token
 
     def start_timer(self):
         if not self.model.running:
@@ -45,6 +46,7 @@ class TimeMateController:
             self.tray.set_running(False)
 
     def book_time(self):
+
         title = self.view.entry.get()
         description = self.view.description.get("0.0", "end").strip()
         if description == self.view.placeholder_text:
@@ -84,8 +86,9 @@ class TimeMateController:
         settings_modal.after(100, settings_modal.grab_set)
         settings_modal.wait_window()
 
-    def save_settings(self, api_url):
+    def save_settings(self, api_url, api_token=None):
         self.settings.set_setting("api_url", api_url)
+        self.settings.set_setting("api_token", api_token)
         self.settings.save_settings()
 
     def _run_timer(self):

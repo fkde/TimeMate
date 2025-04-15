@@ -13,12 +13,12 @@ class SettingsManager:
         self.entries[key] = value
 
     def save_settings(self):
-        self._save(self.entries)
+        self._save()
 
-    def _save(self, entries):
+    def _save(self):
         os.makedirs(os.path.dirname(self.data_file), exist_ok=True)
         with open(self.data_file, 'w') as f:
-            json.dump(entries, f, indent=2)
+            json.dump(self.entries, f, indent=2)
 
     def _load_entries(self):
         if os.path.exists(self.data_file):
